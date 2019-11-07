@@ -7,15 +7,20 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file. See the AUTHORS file for names of contributors
 #include <dirent.h>
+
 #ifndef ROCKSDB_NO_DYNAMIC_EXTENSION
 #include <dlfcn.h>
 #endif
+
 #include <errno.h>
 #include <fcntl.h>
 
 #if defined(OS_LINUX)
+
 #include <linux/fs.h>
+
 #endif
+
 #include <pthread.h>
 #include <signal.h>
 #include <stdio.h>
@@ -24,11 +29,15 @@
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
+
 #if defined(OS_LINUX) || defined(OS_SOLARIS) || defined(OS_ANDROID)
+
 #include <sys/statfs.h>
 #include <sys/syscall.h>
 #include <sys/sysmacros.h>
+
 #endif
+
 #include <sys/statvfs.h>
 #include <sys/time.h>
 #include <sys/types.h>
@@ -42,6 +51,7 @@
 #else
 #include <chrono>
 #endif
+
 #include <deque>
 #include <set>
 #include <vector>
@@ -87,7 +97,7 @@ static const std::string kSharedLibExt = ".so";
 
 namespace {
 
-ThreadStatusUpdater* CreateThreadStatusUpdater() {
+ThreadStatusUpdater *CreateThreadStatusUpdater() {
   return new ThreadStatusUpdater();
 }
 
@@ -118,7 +128,7 @@ class PosixFileLock : public FileLock {
   std::string filename;
 };
 
-int cloexec_flags(int flags, const EnvOptions* options) {
+int cloexec_flags(int flags, const EnvOptions *options) {
   // If the system supports opening the file with cloexec enabled,
   // do so, as this avoids a race condition if a db is opened around
   // the same time that a child process is forked
@@ -177,19 +187,19 @@ class PosixEnv : public Env {
     }
   }
 
-  void SetFD_CLOEXEC(int fd, const EnvOptions* options) {
+  void SetFD_CLOEXEC(int fd, const EnvOptions *options) {
     if ((options == nullptr || options->set_fd_cloexec) && fd > 0) {
       fcntl(fd, F_SETFD, fcntl(fd, F_GETFD) | FD_CLOEXEC);
     }
   }
 
-  Status NewSequentialFile(const std::string& fname,
-                           std::unique_ptr<SequentialFile>* result,
-                           const EnvOptions& options) override {
+  Status NewSequentialFile(const std::string &fname,
+                           std::unique_ptr<SequentialFile> *result,
+                           const EnvOptions &options) override {
     result->reset();
     int fd = -1;
     int flags = cloexec_flags(O_RDONLY, &options);
-    FILE* file = nullptr;
+    FILE *file = nullptr;
 
     if (options.use_direct_reads && !options.use_mmap_reads) {
 #ifdef ROCKSDB_LITE
@@ -233,9 +243,9 @@ class PosixEnv : public Env {
     return Status::OK();
   }
 
-  Status NewRandomAccessFile(const std::string& fname,
-                             std::unique_ptr<RandomAccessFile>* result,
-                             const EnvOptions& options) override {
+  Status NewRandomAccessFile(const std::string &fname,
+                             std::unique_ptr<RandomAccessFile> *result,
+                             const EnvOptions &options) override {
     result->reset();
     Status s;
     int fd;
@@ -260,14 +270,14 @@ class PosixEnv : public Env {
     }
     SetFD_CLOEXEC(fd, &options);
 
-    if (options.use_mmap_reads && sizeof(void*) >= 8) {
+    if (options.use_mmap_reads && sizeof(void *) >= 8) {
       // Use of mmap for random reads has been removed because it
       // kills performance when storage is fast.
       // Use mmap when virtual address-space is plentiful.
       uint64_t size;
       s = GetFileSize(fname, &size);
       if (s.ok()) {
-        void* base = mmap(nullptr, size, PROT_READ, MAP_SHARED, fd, 0);
+        void *base = mmap(nullptr, size, PROT_READ, MAP_SHARED, fd, 0);
         if (base != MAP_FAILED) {
           result->reset(new PosixMmapReadableFile(fd, fname, base,
                                                   size, options));
@@ -290,9 +300,9 @@ class PosixEnv : public Env {
     return s;
   }
 
-  virtual Status OpenWritableFile(const std::string& fname,
-                                  std::unique_ptr<WritableFile>* result,
-                                  const EnvOptions& options,
+  virtual Status OpenWritableFile(const std::string &fname,
+                                  std::unique_ptr<WritableFile> *result,
+                                  const EnvOptions &options,
                                   bool reopen = false) {
     result->reset();
     Status s;
@@ -374,22 +384,22 @@ class PosixEnv : public Env {
     return s;
   }
 
-  Status NewWritableFile(const std::string& fname,
-                         std::unique_ptr<WritableFile>* result,
-                         const EnvOptions& options) override {
+  Status NewWritableFile(const std::string &fname,
+                         std::unique_ptr<WritableFile> *result,
+                         const EnvOptions &options) override {
     return OpenWritableFile(fname, result, options, false);
   }
 
-  Status ReopenWritableFile(const std::string& fname,
-                            std::unique_ptr<WritableFile>* result,
-                            const EnvOptions& options) override {
+  Status ReopenWritableFile(const std::string &fname,
+                            std::unique_ptr<WritableFile> *result,
+                            const EnvOptions &options) override {
     return OpenWritableFile(fname, result, options, true);
   }
 
-  Status ReuseWritableFile(const std::string& fname,
-                           const std::string& old_fname,
-                           std::unique_ptr<WritableFile>* result,
-                           const EnvOptions& options) override {
+  Status ReuseWritableFile(const std::string &fname,
+                           const std::string &old_fname,
+                           std::unique_ptr<WritableFile> *result,
+                           const EnvOptions &options) override {
     result->reset();
     Status s;
     int fd = -1;
@@ -471,9 +481,9 @@ class PosixEnv : public Env {
     return s;
   }
 
-  Status NewRandomRWFile(const std::string& fname,
-                         std::unique_ptr<RandomRWFile>* result,
-                         const EnvOptions& options) override {
+  Status NewRandomRWFile(const std::string &fname,
+                         std::unique_ptr<RandomRWFile> *result,
+                         const EnvOptions &options) override {
     int fd = -1;
     int flags = cloexec_flags(O_RDWR, &options);
 
@@ -496,8 +506,8 @@ class PosixEnv : public Env {
   }
 
   Status NewMemoryMappedFileBuffer(
-      const std::string& fname,
-      std::unique_ptr<MemoryMappedFileBuffer>* result) override {
+      const std::string &fname,
+      std::unique_ptr<MemoryMappedFileBuffer> *result) override {
     int fd = -1;
     Status status;
     int flags = cloexec_flags(O_RDWR, nullptr);
@@ -519,7 +529,7 @@ class PosixEnv : public Env {
     if (status.ok()) {
       status = GetFileSize(fname, &size);
     }
-    void* base = nullptr;
+    void *base = nullptr;
     if (status.ok()) {
       base = mmap(nullptr, static_cast<size_t>(size), PROT_READ | PROT_WRITE,
                   MAP_SHARED, fd, 0);
@@ -538,8 +548,8 @@ class PosixEnv : public Env {
     return status;
   }
 
-  Status NewDirectory(const std::string& name,
-                      std::unique_ptr<Directory>* result) override {
+  Status NewDirectory(const std::string &name,
+                      std::unique_ptr<Directory> *result) override {
     result->reset();
     int fd;
     int flags = cloexec_flags(0, nullptr);
@@ -555,7 +565,7 @@ class PosixEnv : public Env {
     return Status::OK();
   }
 
-  Status FileExists(const std::string& fname) override {
+  Status FileExists(const std::string &fname) override {
     int result = access(fname.c_str(), F_OK);
 
     if (result == 0) {
@@ -568,30 +578,26 @@ class PosixEnv : public Env {
       case ELOOP:
       case ENAMETOOLONG:
       case ENOENT:
-      case ENOTDIR:
-        return Status::NotFound();
-      default:
-        assert(err == EIO || err == ENOMEM);
+      case ENOTDIR:return Status::NotFound();
+      default:assert(err == EIO || err == ENOMEM);
         return Status::IOError("Unexpected error(" + ToString(err) +
-                               ") accessing file `" + fname + "' ");
+            ") accessing file `" + fname + "' ");
     }
   }
 
-  Status GetChildren(const std::string& dir,
-                     std::vector<std::string>* result) override {
+  Status GetChildren(const std::string &dir,
+                     std::vector<std::string> *result) override {
     result->clear();
-    DIR* d = opendir(dir.c_str());
+    DIR *d = opendir(dir.c_str());
     if (d == nullptr) {
       switch (errno) {
         case EACCES:
         case ENOENT:
-        case ENOTDIR:
-          return Status::NotFound();
-        default:
-          return IOError("While opendir", dir, errno);
+        case ENOTDIR:return Status::NotFound();
+        default:return IOError("While opendir", dir, errno);
       }
     }
-    struct dirent* entry;
+    struct dirent *entry;
     while ((entry = readdir(d)) != nullptr) {
       result->push_back(entry->d_name);
     }
@@ -599,7 +605,7 @@ class PosixEnv : public Env {
     return Status::OK();
   }
 
-  Status DeleteFile(const std::string& fname) override {
+  Status DeleteFile(const std::string &fname) override {
     Status result;
     if (unlink(fname.c_str()) != 0) {
       result = IOError("while unlink() file", fname, errno);
@@ -607,7 +613,7 @@ class PosixEnv : public Env {
     return result;
   };
 
-  Status CreateDir(const std::string& name) override {
+  Status CreateDir(const std::string &name) override {
     Status result;
     if (mkdir(name.c_str(), 0755) != 0) {
       result = IOError("While mkdir", name, errno);
@@ -615,21 +621,21 @@ class PosixEnv : public Env {
     return result;
   };
 
-  Status CreateDirIfMissing(const std::string& name) override {
+  Status CreateDirIfMissing(const std::string &name) override {
     Status result;
     if (mkdir(name.c_str(), 0755) != 0) {
       if (errno != EEXIST) {
         result = IOError("While mkdir if missing", name, errno);
       } else if (!DirExists(name)) { // Check that name is actually a
-                                     // directory.
+        // directory.
         // Message is taken from mkdir
-        result = Status::IOError("`"+name+"' exists but is not a directory");
+        result = Status::IOError("`" + name + "' exists but is not a directory");
       }
     }
     return result;
   };
 
-  Status DeleteDir(const std::string& name) override {
+  Status DeleteDir(const std::string &name) override {
     Status result;
     if (rmdir(name.c_str()) != 0) {
       result = IOError("file rmdir", name, errno);
@@ -637,7 +643,7 @@ class PosixEnv : public Env {
     return result;
   };
 
-  Status GetFileSize(const std::string& fname, uint64_t* size) override {
+  Status GetFileSize(const std::string &fname, uint64_t *size) override {
     Status s;
     struct stat sbuf;
     if (stat(fname.c_str(), &sbuf) != 0) {
@@ -649,17 +655,18 @@ class PosixEnv : public Env {
     return s;
   }
 
-  Status GetFileModificationTime(const std::string& fname,
-                                 uint64_t* file_mtime) override {
+  Status GetFileModificationTime(const std::string &fname,
+                                 uint64_t *file_mtime) override {
     struct stat s;
-    if (stat(fname.c_str(), &s) !=0) {
+    if (stat(fname.c_str(), &s) != 0) {
       return IOError("while stat a file for modification time", fname, errno);
     }
     *file_mtime = static_cast<uint64_t>(s.st_mtime);
     return Status::OK();
   }
-  Status RenameFile(const std::string& src,
-                    const std::string& target) override {
+
+  Status RenameFile(const std::string &src,
+                    const std::string &target) override {
     Status result;
     if (rename(src.c_str(), target.c_str()) != 0) {
       result = IOError("While renaming a file to " + target, src, errno);
@@ -667,7 +674,7 @@ class PosixEnv : public Env {
     return result;
   }
 
-  Status LinkFile(const std::string& src, const std::string& target) override {
+  Status LinkFile(const std::string &src, const std::string &target) override {
     Status result;
     if (link(src.c_str(), target.c_str()) != 0) {
       if (errno == EXDEV) {
@@ -678,7 +685,7 @@ class PosixEnv : public Env {
     return result;
   }
 
-  Status NumFileLinks(const std::string& fname, uint64_t* count) override {
+  Status NumFileLinks(const std::string &fname, uint64_t *count) override {
     struct stat s;
     if (stat(fname.c_str(), &s) != 0) {
       return IOError("while stat a file for num file links", fname, errno);
@@ -687,8 +694,8 @@ class PosixEnv : public Env {
     return Status::OK();
   }
 
-  Status AreFilesSame(const std::string& first, const std::string& second,
-                      bool* res) override {
+  Status AreFilesSame(const std::string &first, const std::string &second,
+                      bool *res) override {
     struct stat statbuf[2];
     if (stat(first.c_str(), &statbuf[0]) != 0) {
       return IOError("stat file", first, errno);
@@ -707,7 +714,7 @@ class PosixEnv : public Env {
     return Status::OK();
   }
 
-  Status LockFile(const std::string& fname, FileLock** lock) override {
+  Status LockFile(const std::string &fname, FileLock **lock) override {
     *lock = nullptr;
     Status result;
 
@@ -743,7 +750,7 @@ class PosixEnv : public Env {
       close(fd);
     } else {
       SetFD_CLOEXEC(fd, nullptr);
-      PosixFileLock* my_lock = new PosixFileLock;
+      PosixFileLock *my_lock = new PosixFileLock;
       my_lock->fd_ = fd;
       my_lock->filename = fname;
       *lock = my_lock;
@@ -753,8 +760,8 @@ class PosixEnv : public Env {
     return result;
   }
 
-  Status UnlockFile(FileLock* lock) override {
-    PosixFileLock* my_lock = reinterpret_cast<PosixFileLock*>(lock);
+  Status UnlockFile(FileLock *lock) override {
+    PosixFileLock *my_lock = reinterpret_cast<PosixFileLock *>(lock);
     Status result;
     mutex_lockedFiles.Lock();
     // If we are unlocking, then verify that we had locked it earlier,
@@ -827,20 +834,20 @@ class PosixEnv : public Env {
   }
 #endif  // !ROCKSDB_NO_DYNAMIC_EXTENSION
 
-  void Schedule(void (*function)(void* arg1), void* arg, Priority pri = LOW,
-                void* tag = nullptr,
-                void (*unschedFunction)(void* arg) = nullptr) override;
+  void Schedule(void (*function)(void *arg1), void *arg, Priority pri = LOW,
+                void *tag = nullptr,
+                void (*unschedFunction)(void *arg) = nullptr) override;
 
-  int UnSchedule(void* arg, Priority pri) override;
+  int UnSchedule(void *arg, Priority pri) override;
 
-  void StartThread(void (*function)(void* arg), void* arg) override;
+  void StartThread(void (*function)(void *arg), void *arg) override;
 
   void WaitForJoin() override;
 
   unsigned int GetThreadPoolQueueLen(Priority pri = LOW) const override;
 
-  Status GetTestDirectory(std::string* result) override {
-    const char* env = getenv("TEST_TMPDIR");
+  Status GetTestDirectory(std::string *result) override {
+    const char *env = getenv("TEST_TMPDIR");
     if (env && env[0] != '\0') {
       *result = env;
     } else {
@@ -853,7 +860,7 @@ class PosixEnv : public Env {
     return Status::OK();
   }
 
-  Status GetThreadList(std::vector<ThreadStatus>* thread_list) override {
+  Status GetThreadList(std::vector<ThreadStatus> *thread_list) override {
     assert(thread_status_updater_);
     return thread_status_updater_->GetThreadList(thread_list);
   }
@@ -871,29 +878,29 @@ class PosixEnv : public Env {
 
   uint64_t GetThreadID() const override { return gettid(pthread_self()); }
 
-  Status GetFreeSpace(const std::string& fname, uint64_t* free_space) override {
+  Status GetFreeSpace(const std::string &fname, uint64_t *free_space) override {
     struct statvfs sbuf;
 
     if (statvfs(fname.c_str(), &sbuf) < 0) {
       return IOError("While doing statvfs", fname, errno);
     }
 
-    *free_space = ((uint64_t)sbuf.f_bsize * sbuf.f_bfree);
+    *free_space = ((uint64_t) sbuf.f_bsize * sbuf.f_bfree);
     return Status::OK();
   }
 
-  Status NewLogger(const std::string& fname,
-                   std::shared_ptr<Logger>* result) override {
-    FILE* f;
+  Status NewLogger(const std::string &fname,
+                   std::shared_ptr<Logger> *result) override {
+    FILE *f;
     {
       IOSTATS_TIMER_GUARD(open_nanos);
       f = fopen(fname.c_str(), "w"
-#ifdef __GLIBC_PREREQ
-#if __GLIBC_PREREQ(2, 7)
-          "e" // glibc extension to enable O_CLOEXEC
+                               #ifdef __GLIBC_PREREQ
+                               #if __GLIBC_PREREQ(2, 7)
+                               "e" // glibc extension to enable O_CLOEXEC
 #endif
 #endif
-          );
+      );
     }
     if (f == nullptr) {
       result->reset();
@@ -947,7 +954,7 @@ class PosixEnv : public Env {
 
   void SleepForMicroseconds(int micros) override { usleep(micros); }
 
-  Status GetHostName(char* name, uint64_t len) override {
+  Status GetHostName(char *name, uint64_t len) override {
     int ret = gethostname(name, static_cast<size_t>(len));
     if (ret < 0) {
       if (errno == EFAULT || errno == EINVAL)
@@ -958,7 +965,7 @@ class PosixEnv : public Env {
     return Status::OK();
   }
 
-  Status GetCurrentTime(int64_t* unix_time) override {
+  Status GetCurrentTime(int64_t *unix_time) override {
     time_t ret = time(nullptr);
     if (ret == (time_t) -1) {
       return IOError("GetCurrentTime", "", errno);
@@ -967,15 +974,15 @@ class PosixEnv : public Env {
     return Status::OK();
   }
 
-  Status GetAbsolutePath(const std::string& db_path,
-                         std::string* output_path) override {
+  Status GetAbsolutePath(const std::string &db_path,
+                         std::string *output_path) override {
     if (!db_path.empty() && db_path[0] == '/') {
       *output_path = db_path;
       return Status::OK();
     }
 
     char the_path[256];
-    char* ret = getcwd(the_path, 256);
+    char *ret = getcwd(the_path, 256);
     if (ret == nullptr) {
       return Status::IOError(strerror(errno));
     }
@@ -1025,13 +1032,13 @@ class PosixEnv : public Env {
   }
 
   std::string TimeToString(uint64_t secondsSince1970) override {
-    const time_t seconds = (time_t)secondsSince1970;
+    const time_t seconds = (time_t) secondsSince1970;
     struct tm t;
     int maxsize = 64;
     std::string dummy;
     dummy.reserve(maxsize);
     dummy.resize(maxsize);
-    char* p = &dummy[0];
+    char *p = &dummy[0];
     localtime_r(&seconds, &t);
     snprintf(p, maxsize,
              "%04d/%02d/%02d-%02d:%02d:%02d ",
@@ -1044,8 +1051,8 @@ class PosixEnv : public Env {
     return dummy;
   }
 
-  EnvOptions OptimizeForLogWrite(const EnvOptions& env_options,
-                                 const DBOptions& db_options) const override {
+  EnvOptions OptimizeForLogWrite(const EnvOptions &env_options,
+                                 const DBOptions &db_options) const override {
     EnvOptions optimized = env_options;
     optimized.use_mmap_writes = false;
     optimized.use_direct_writes = false;
@@ -1060,7 +1067,7 @@ class PosixEnv : public Env {
   }
 
   EnvOptions OptimizeForManifestWrite(
-      const EnvOptions& env_options) const override {
+      const EnvOptions &env_options) const override {
     EnvOptions optimized = env_options;
     optimized.use_mmap_writes = false;
     optimized.use_direct_writes = false;
@@ -1073,7 +1080,7 @@ class PosixEnv : public Env {
   bool forceMmapOff_;  // do we override Env options?
 
   // Returns true iff the named directory exists and is a directory.
-  virtual bool DirExists(const std::string& dname) {
+  virtual bool DirExists(const std::string &dname) {
     struct stat statbuf;
     if (stat(dname.c_str(), &statbuf) == 0) {
       return S_ISDIR(statbuf.st_mode);
@@ -1081,21 +1088,17 @@ class PosixEnv : public Env {
     return false; // stat() failed return false
   }
 
-  bool SupportsFastAllocate(const std::string& path) {
+  bool SupportsFastAllocate(const std::string &path) {
 #ifdef ROCKSDB_FALLOCATE_PRESENT
     struct statfs s;
-    if (statfs(path.c_str(), &s)){
+    if (statfs(path.c_str(), &s)) {
       return false;
     }
     switch (s.f_type) {
-      case EXT4_SUPER_MAGIC:
-        return true;
-      case XFS_SUPER_MAGIC:
-        return true;
-      case TMPFS_MAGIC:
-        return true;
-      default:
-        return false;
+      case EXT4_SUPER_MAGIC:return true;
+      case XFS_SUPER_MAGIC:return true;
+      case TMPFS_MAGIC:return true;
+      default:return false;
     }
 #else
     (void)path;
@@ -1129,13 +1132,13 @@ PosixEnv::PosixEnv()
   thread_status_updater_ = CreateThreadStatusUpdater();
 }
 
-void PosixEnv::Schedule(void (*function)(void* arg1), void* arg, Priority pri,
-                        void* tag, void (*unschedFunction)(void* arg)) {
+void PosixEnv::Schedule(void (*function)(void *arg1), void *arg, Priority pri,
+                        void *tag, void (*unschedFunction)(void *arg)) {
   assert(pri >= Priority::BOTTOM && pri <= Priority::HIGH);
   thread_pools_[pri].Schedule(function, arg, tag, unschedFunction);
 }
 
-int PosixEnv::UnSchedule(void* arg, Priority pri) {
+int PosixEnv::UnSchedule(void *arg, Priority pri) {
   return thread_pools_[pri].UnSchedule(arg);
 }
 
@@ -1145,20 +1148,21 @@ unsigned int PosixEnv::GetThreadPoolQueueLen(Priority pri) const {
 }
 
 struct StartThreadState {
-  void (*user_function)(void*);
-  void* arg;
+  void (*user_function)(void *);
+
+  void *arg;
 };
 
-static void* StartThreadWrapper(void* arg) {
-  StartThreadState* state = reinterpret_cast<StartThreadState*>(arg);
+static void *StartThreadWrapper(void *arg) {
+  StartThreadState *state = reinterpret_cast<StartThreadState *>(arg);
   state->user_function(state->arg);
   delete state;
   return nullptr;
 }
 
-void PosixEnv::StartThread(void (*function)(void* arg), void* arg) {
+void PosixEnv::StartThread(void (*function)(void *arg), void *arg) {
   pthread_t t;
-  StartThreadState* state = new StartThreadState;
+  StartThreadState *state = new StartThreadState;
   state->user_function = function;
   state->arg = arg;
   ThreadPoolImpl::PthreadCall(
@@ -1191,21 +1195,21 @@ std::string Env::GenerateUniqueId() {
   // Could not read uuid_file - generate uuid using "nanos-random"
   Random64 r(time(nullptr));
   uint64_t random_uuid_portion =
-    r.Uniform(std::numeric_limits<uint64_t>::max());
+      r.Uniform(std::numeric_limits<uint64_t>::max());
   uint64_t nanos_uuid_portion = NowNanos();
   char uuid2[200];
   snprintf(uuid2,
            200,
            "%lx-%lx",
-           (unsigned long)nanos_uuid_portion,
-           (unsigned long)random_uuid_portion);
+           (unsigned long) nanos_uuid_portion,
+           (unsigned long) random_uuid_portion);
   return uuid2;
 }
 
 //
 // Default Posix Env
 //
-Env* Env::Default() {
+Env *Env::Default() {
   // The following function call initializes the singletons of ThreadLocalPtr
   // right before the static default_env.  This guarantees default_env will
   // always being destructed before the ThreadLocalPtr singletons get

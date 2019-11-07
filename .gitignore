@@ -75,3 +75,6 @@ tp2/
 fbcode/
 fbcode
 buckifier/*.pyc
+
+cmake-build-debug-remote/
+cmake-build-debug/

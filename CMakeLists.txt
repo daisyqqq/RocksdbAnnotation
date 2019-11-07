@@ -38,6 +38,13 @@ enable_language(CXX)
 enable_language(C)
 enable_language(ASM)
 
+# gtest include
+#include_directories(/usr/src/gtest/include)
+# nvm emulator include directory
+#include_directories(/home/daisy/Documents/Thesis/quartz/src/lib)
+# nvm emulator lib directory
+#link_directories(/home/daisy/Documents/Thesis/quartz/build/src/lib)
+
 if(POLICY CMP0042)
   cmake_policy(SET CMP0042 NEW)
 endif()
@@ -276,7 +283,8 @@ if(FAIL_ON_WARNINGS)
   if(MSVC)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /WX")
   else() # assume GCC
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror")
+#    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error")
   endif()
 endif()
 
@@ -578,6 +586,7 @@ set(SOURCES
         monitoring/thread_status_updater.cc
         monitoring/thread_status_util.cc
         monitoring/thread_status_util_debug.cc
+        options/cf_options.cc
         options/cf_options.cc
         options/db_options.cc
         options/options.cc
@@ -1022,6 +1031,7 @@ if(WITH_TESTS)
     memtable/memtablerep_bench.cc
     db/range_del_aggregator_bench.cc
     tools/db_bench.cc
+    tools/exp.cc
     table/table_reader_bench.cc
     utilities/persistent_cache/hash_table_bench.cc)
   add_library(testharness OBJECT test_util/testharness.cc)
@@ -1032,6 +1042,9 @@ if(WITH_TESTS)
     target_link_libraries(${exename}${ARTIFACT_SUFFIX} gtest ${LIBS})
   endforeach(sourcefile ${BENCHMARKS})
 
+    # link to nvm enulator dynamic library libnvmemul.so
+#    target_link_libraries(exp nvmemul)
+
   # For test util library that is build only in DEBUG mode
   # and linked to tests. Add test only code that is not #ifdefed for Release here.
   set(TESTUTIL_SOURCE
@@ -1040,7 +1053,7 @@ if(WITH_TESTS)
       table/mock_table.cc
       test_util/fault_injection_test_env.cc
       utilities/cassandra/test_utils.cc
-  )
+          )
   # test utilities are only build in debug
   enable_testing()
   add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND})
