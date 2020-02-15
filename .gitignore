@@ -78,3 +78,4 @@ buckifier/*.pyc
 
 cmake-build-debug-remote/
 cmake-build-debug/
+cmake-build*
