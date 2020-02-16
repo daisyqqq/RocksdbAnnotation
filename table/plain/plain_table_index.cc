@@ -65,17 +65,17 @@ void PlainTableIndexBuilder::IndexRecordList::AddRecord(uint32_t hash,
   new_record.next = nullptr;
 }
 
-void PlainTableIndexBuilder::AddKeyPrefix(Slice key_prefix_slice,
+void PlainTableIndexBuilder::AddKeyPrefix(Slice key_prefix_slice, // qqq: prefix of key
                                           uint32_t key_offset) {
-  if (is_first_record_ || prev_key_prefix_ != key_prefix_slice.ToString()) {
+  if (is_first_record_ || prev_key_prefix_ != key_prefix_slice.ToString()) {  // qqq: is_first_record, 整个table的第一条记录
     ++num_prefixes_;
     if (!is_first_record_) {
-      keys_per_prefix_hist_.Add(num_keys_per_prefix_);
+      keys_per_prefix_hist_.Add(num_keys_per_prefix_);  // qqq: 把同一个prefix的key个数记录在直方图里
     }
     num_keys_per_prefix_ = 0;
     prev_key_prefix_ = key_prefix_slice.ToString();
     prev_key_prefix_hash_ = GetSliceHash(key_prefix_slice);
-    due_index_ = true;
+    due_index_ = true;  // qqq: 表示需要加到bucket的二分查找buffer里
   }
 
   if (due_index_) {
@@ -92,7 +92,7 @@ void PlainTableIndexBuilder::AddKeyPrefix(Slice key_prefix_slice,
 }
 
 Slice PlainTableIndexBuilder::Finish() {
-  AllocateIndex();
+  AllocateIndex();  // qqq: 分配哈希表的空间
   std::vector<IndexRecord*> hash_to_offsets(index_size_, nullptr);
   std::vector<uint32_t> entries_per_bucket(index_size_, 0);
   BucketizeIndexes(&hash_to_offsets, &entries_per_bucket);
@@ -113,7 +113,7 @@ void PlainTableIndexBuilder::AllocateIndex() {
   } else {
     double hash_table_size_multipier = 1.0 / hash_table_ratio_;
     index_size_ =
-      static_cast<uint32_t>(num_prefixes_ * hash_table_size_multipier) + 1;
+      static_cast<uint32_t>(num_prefixes_ * hash_table_size_multipier) + 1; // qqq: index_size_是哈希有几个位置
     assert(index_size_ > 0);
   }
 }
@@ -133,6 +133,7 @@ void PlainTableIndexBuilder::BucketizeIndexes(
     }
     uint32_t bucket = GetBucketIdFromHash(cur_hash, index_size_);
     IndexRecord* prev_bucket_head = (*hash_to_offsets)[bucket];
+    // qqq: 每个bucket内放一个链表，新的加入链表的头部，此时还没有做二级索引
     index_record->next = prev_bucket_head;
     (*hash_to_offsets)[bucket] = index_record;
     (*entries_per_bucket)[bucket]++;
@@ -144,7 +145,7 @@ void PlainTableIndexBuilder::BucketizeIndexes(
       continue;
     }
     // Only buckets with more than 1 entry will have subindex.
-    sub_index_size_ += VarintLength(entry_count);
+    sub_index_size_ += VarintLength(entry_count); // qqq: 每个bucket的缓存会首先写这个缓存内有多少条offset记录
     // total bytes needed to store these entries' in-file offsets.
     sub_index_size_ += entry_count * PlainTableIndex::kOffsetLen;
   }
@@ -163,7 +164,7 @@ Slice PlainTableIndexBuilder::FillIndexes(
   auto temp_ptr = EncodeVarint32(allocated, index_size_);
   uint32_t* index =
       reinterpret_cast<uint32_t*>(EncodeVarint32(temp_ptr, num_prefixes_));
-  char* sub_index = reinterpret_cast<char*>(index + index_size_);
+  char* sub_index = reinterpret_cast<char*>(index + index_size_); // qqq: 每个bucket是一个int32
 
   uint32_t sub_index_offset = 0;
   for (uint32_t i = 0; i < index_size_; i++) {

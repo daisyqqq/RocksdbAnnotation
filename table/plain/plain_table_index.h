@@ -86,7 +86,7 @@ class PlainTableIndex {
   // The hash key is `prefix_hash`. The function fills the hash bucket
   // content in `bucket_value`, which is up to the caller to interpret.
   IndexSearchResult GetOffset(uint32_t prefix_hash,
-                              uint32_t* bucket_value) const;
+                              uint32_t* bucket_value) const;  // qqq: get hash bucket content firstly
 
   // Initialize data from `index_data`, which points to raw data for
   // index stored in the SST file.
@@ -197,7 +197,7 @@ class PlainTableIndexBuilder {
 
    private:
     IndexRecord* AllocateNewGroup() {
-      IndexRecord* result = new IndexRecord[kNumRecordsPerGroup];
+      IndexRecord* result = new IndexRecord[kNumRecordsPerGroup]; // qqq: 渐进地分配record
       groups_.push_back(result);
       return result;
     }
@@ -234,7 +234,7 @@ class PlainTableIndexBuilder {
 
   uint32_t prev_key_prefix_hash_;
   size_t index_sparseness_;
-  uint32_t index_size_;
+  uint32_t index_size_; // qqq: 哈希有多少个bucket
   uint32_t sub_index_size_;
 
   const SliceTransform* prefix_extractor_;

@@ -128,6 +128,7 @@ class PlainTableFileReader {
   uint32_t num_buf_;
   Status status_;
 
+  // qqq: read non map contents
   Slice GetFromBuffer(Buffer* buf, uint32_t file_offset, uint32_t len);
 };
 

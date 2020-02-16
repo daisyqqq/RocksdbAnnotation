@@ -116,6 +116,8 @@ class PlainTableDBTest : public testing::Test,
 
   void SetUp() override {
     mmap_mode_ = GetParam();
+    // qqq: what if use mmap mode
+    mmap_mode_ = true;
     dbname_ = test::PerThreadDBPath("plain_table_db_test");
     EXPECT_OK(DestroyDB(dbname_, Options()));
     db_ = nullptr;
