@@ -212,6 +212,7 @@ class Env {
                                    std::unique_ptr<WritableFile>* result,
                                    const EnvOptions& options);
 
+  // TODO(QQQ): posix randomrwfile file can be appended with data, but nvm file can not
   // Open `fname` for random read and write, if file doesn't exist the file
   // will be created.  On success, stores a pointer to the new file in
   // *result and returns OK.  On failure returns non-OK.
@@ -223,6 +224,7 @@ class Env {
     return Status::NotSupported("RandomRWFile is not implemented in this Env");
   }
 
+  // TODO(QQQ): nvm file are similar with the class
   // Opens `fname` as a memory-mapped file for read and write (in-place updates
   // only, i.e., no appends). On success, stores a raw buffer covering the whole
   // file in `*result`. The file must exist prior to this call.
@@ -1131,6 +1133,7 @@ extern Status ReadFileToString(Env* env, const std::string& fname,
 // An implementation of Env that forwards all calls to another Env.
 // May be useful to clients who wish to override just part of the
 // functionality of another Env.
+// qqq: target 作为 base env, 函数直接调用base env的，除非override
 class EnvWrapper : public Env {
  public:
   // Initialize an EnvWrapper that delegates all calls to *t
