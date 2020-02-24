@@ -345,8 +345,9 @@ void CompactionRangeDelAggregator::AddTombstones(
       std::move(input_iter), icmp_, smallest, largest));
 
   auto split_iters = parent_iters_.back()->SplitBySnapshot(*snapshots_);
+  // qqq: split_iters是<seq, TruncatedRangeDelIterator>的map，也就是将range_del_iter按seq分开
   for (auto& split_iter : split_iters) {
-    auto it = reps_.find(split_iter.first);
+    auto it = reps_.find(split_iter.first); // qqq: seq
     if (it == reps_.end()) {
       bool inserted;
       SequenceNumber upper_bound = split_iter.second->upper_bound();

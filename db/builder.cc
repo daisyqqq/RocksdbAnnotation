@@ -93,6 +93,7 @@ Status BuildTable(
   iter->SeekToFirst();
   std::unique_ptr<CompactionRangeDelAggregator> range_del_agg(
       new CompactionRangeDelAggregator(&internal_comparator, snapshots));
+  // qqq: range_del_iter为每个mem中range del的迭代器
   for (auto& range_del_iter : range_del_iters) {
     range_del_agg->AddTombstones(std::move(range_del_iter));
   }
