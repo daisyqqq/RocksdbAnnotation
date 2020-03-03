@@ -70,6 +70,7 @@ FilterBlockBuilder* CreateFilterBlockBuilder(
   FilterBitsBuilder* filter_bits_builder =
       table_opt.filter_policy->GetFilterBitsBuilder();
   if (filter_bits_builder == nullptr) {
+    // 针对每个data block的filter，最后会拼接在一起
     return new BlockBasedFilterBlockBuilder(mopt.prefix_extractor.get(),
                                             table_opt);
   } else {
@@ -90,6 +91,7 @@ FilterBlockBuilder* CreateFilterBlockBuilder(
           filter_bits_builder, table_opt.index_block_restart_interval,
           use_delta_encoding_for_index_values, p_index_builder, partition_size);
     } else {
+      // 针对整个sst的filter
       return new FullFilterBlockBuilder(mopt.prefix_extractor.get(),
                                         table_opt.whole_key_filtering,
                                         filter_bits_builder);
@@ -281,9 +283,9 @@ struct BlockBasedTableBuilder::Rep {
   const BlockBasedTableOptions table_options;
   const InternalKeyComparator& internal_comparator;
   WritableFileWriter* file;
-  uint64_t offset = 0;
+  uint64_t offset = 0;  // file的当前偏移
   Status status;
-  size_t alignment;
+  size_t alignment; // 块设备的对齐size
   BlockBuilder data_block;
   // Buffers uncompressed data blocks and keys to replay later. Needed when
   // compression dictionary is enabled so we can finalize the dictionary before
@@ -291,15 +293,15 @@ struct BlockBasedTableBuilder::Rep {
   // TODO(ajkr): ideally we don't buffer all keys and all uncompressed data
   // blocks as it's redundant, but it's easier to implement for now.
   std::vector<std::pair<std::string, std::vector<std::string>>>
-      data_block_and_keys_buffers;
+      data_block_and_keys_buffers;  // 为了构建compression dictionary缓存的data block，pair的对应关系是[datablock->该datablock中的所有key]
   BlockBuilder range_del_block;
 
-  InternalKeySliceTransform internal_prefix_transform;
-  std::unique_ptr<IndexBuilder> index_builder;
-  PartitionedIndexBuilder* p_index_builder_ = nullptr;
+  InternalKeySliceTransform internal_prefix_transform;  // 用于提取前缀的，在kHashSearch类型的index builder中才会用到，默认使用的是kBinarySearch类型
+  std::unique_ptr<IndexBuilder> index_builder;  // 用于构建index block
+  PartitionedIndexBuilder* p_index_builder_ = nullptr;  // 在kTwoLevelIndexSearch类型的index builder中才会用到
 
-  std::string last_key;
-  CompressionType compression_type;
+  std::string last_key; // 上一个key，保存last_key是为了构建shortest seperate key
+  CompressionType compression_type; // 以下几项都是压缩配置
   uint64_t sample_for_compression;
   CompressionOptions compression_opts;
   std::unique_ptr<CompressionDict> compression_dict;
@@ -307,7 +309,7 @@ struct BlockBasedTableBuilder::Rep {
   std::unique_ptr<UncompressionContext> verify_ctx;
   std::unique_ptr<UncompressionDict> verify_dict;
 
-  size_t data_begin_offset = 0;
+  size_t data_begin_offset = 0; // 当前为了构建compression dict缓存的data block大小
 
   TableProperties props;
 
@@ -336,20 +338,20 @@ struct BlockBasedTableBuilder::Rep {
   };
   State state;
 
-  const bool use_delta_encoding_for_index_values;
-  std::unique_ptr<FilterBlockBuilder> filter_builder;
+  const bool use_delta_encoding_for_index_values; // index block中kv对的value大小是固定的，因此可以使用value delta对value也进行压缩
+  std::unique_ptr<FilterBlockBuilder> filter_builder; // 用于构建filter block
   char compressed_cache_key_prefix[BlockBasedTable::kMaxCacheKeyPrefixSize];
   size_t compressed_cache_key_prefix_size;
 
-  BlockHandle pending_handle;  // Handle to add to index block
+  BlockHandle pending_handle;  // Handle to add to index block, 用于构建datablock的BlockHandle
 
   std::string compressed_output;
-  std::unique_ptr<FlushBlockPolicy> flush_block_policy;
+  std::unique_ptr<FlushBlockPolicy> flush_block_policy; // datablock flush的策略，默认是设置datablock大小的阈值
   uint32_t column_family_id;
   const std::string& column_family_name;
   uint64_t creation_time = 0;
   uint64_t oldest_key_time = 0;
-  const uint64_t target_file_size;
+  const uint64_t target_file_size;  // 由kBuffered切换到kUnbuffered的缓存datablock大小的阈值
   uint64_t file_creation_time = 0;
 
   std::vector<std::unique_ptr<IntTblPropCollector>> table_properties_collectors;
@@ -492,7 +494,7 @@ BlockBasedTableBuilder::~BlockBasedTableBuilder() {
   assert(rep_->state == Rep::State::kClosed);
   delete rep_;
 }
-
+// key是internal key
 void BlockBasedTableBuilder::Add(const Slice& key, const Slice& value) {
   Rep* r = rep_;
   assert(rep_->state != Rep::State::kClosed);
@@ -505,6 +507,7 @@ void BlockBasedTableBuilder::Add(const Slice& key, const Slice& value) {
     }
 #endif  // NDEBUG
 
+    // 是否需要将当前block写入文件，开启一个新的block
     auto should_flush = r->flush_block_policy->Update(key, value);
     if (should_flush) {
       assert(!r->data_block.empty());

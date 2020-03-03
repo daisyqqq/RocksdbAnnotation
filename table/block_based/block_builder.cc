@@ -132,6 +132,7 @@ Slice BlockBuilder::Finish() {
   return Slice(buffer_);
 }
 
+// delta_value只在value长度固定的时候使用
 void BlockBuilder::Add(const Slice& key, const Slice& value,
                        const Slice* const delta_value) {
   assert(!finished_);
